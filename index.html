@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meine Top-Empfehlungen</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --border: #2a2a2a;
+    --accent: #c8f000;
+    --text: #f0f0f0;
+    --muted: #888;
+    --card-bg: #1a1a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; min-height: 100vh; }
+  header { text-align: center; padding: 4rem 1.5rem 2rem; border-bottom: 1px solid var(--border); }
+  header .tag { display: inline-block; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; font-weight: 500; }
+  header h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 0.75rem; }
+  header p { font-size: 15px; color: var(--muted); max-width: 400px; margin: 0 auto; line-height: 1.6; }
+  .count-bar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 1.5rem; font-size: 12px; color: var(--muted); }
+  .count-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  main { max-width: 680px; margin: 0 auto; padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1px; }
+  .product-card { background: var(--card-bg); border: 1px solid var(--border); padding: 1.75rem; transition: border-color 0.2s ease, background 0.2s ease; animation: fadeIn 0.4s ease both; }
+  .product-card:first-child { border-radius: 12px 12px 0 0; }
+  .product-card:last-child { border-radius: 0 0 12px 12px; }
+  .product-card:only-child { border-radius: 12px; }
+  .product-card:hover { border-color: #3a3a3a; background: #1e1e1e; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .card-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; }
+  .card-content { flex: 1; }
+  .product-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 500; margin-bottom: 0.6rem; line-height: 1.3; }
+  .product-desc { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 420px; }
+  .card-action { flex-shrink: 0; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #0d0d0d; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 10px 18px; border-radius: 6px; text-decoration: none; white-space: nowrap; transition: opacity 0.15s ease, transform 0.15s ease; }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn svg { width: 14px; height: 14px; }
+  .loading { text-align: center; padding: 4rem; color: var(--muted); font-size: 14px; }
+  .loading .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 4rem; color: var(--muted); font-size: 14px; }
+  footer { text-align: center; padding: 2.5rem 1.5rem 3rem; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.7; max-width: 560px; margin: 0 auto; }
+  @media (max-width: 500px) { .card-inner { flex-direction: column; gap: 1rem; } .btn { width: 100%; justify-content: center; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="tag">✦ Täglich aktualisiert</div>
+  <h1>Meine Top&#8209;Empfehlungen</h1>
+  <p>Geprüfte Produkte die ich selbst empfehle — alle mit direktem Link.</p>
+  <div class="count-bar">
+    <span class="dot"></span>
+    <span id="count-text">Wird geladen...</span>
+  </div>
+</header>
+<main id="product-list">
+  <div class="loading"><div class="spinner"></div>Produkte werden geladen...</div>
+</main>
+<footer>* Diese Seite enthält Affiliate-Links. Wenn du über einen dieser Links kaufst, erhalte ich eine Provision. Für dich entstehen dabei keine Mehrkosten.</footer>
+<script>
+  const WEBHOOK_URL = 'https://hook.eu1.make.com/kk973ehbeb296119xriqc1sjt6x56tdh';
+
+  async function loadProducts() {
+    const list = document.getElementById('product-list');
+    const countText = document.getElementById('count-text');
+    try {
+      const res = await fetch(WEBHOOK_URL);
+      const text = await res.text();
+      const lines = text.trim().split('\n').filter(Boolean);
+      const products = [];
+      for (const line of lines) {
+        try { const obj = JSON.parse(line); if (obj.produktname) products.push(obj); } catch(e) {}
+      }
+      if (products.length === 0) {
+        list.innerHTML = '<div class="empty">Keine Produkte verfügbar.</div>';
+        countText.textContent = '';
+        return;
+      }
+      countText.textContent = products.length + ' Produkte verfügbar';
+      list.innerHTML = products.map(function(p, i) {
+        const delay = i * 60;
+        const link = p.link && p.link.trim() ? p.link : '';
+        return '<div class="product-card" style="animation-delay:' + delay + 'ms"><div class="card-inner"><div class="card-content"><div class="product-name">' + escHtml(p.produktname) + '</div><div class="product-desc">' + escHtml(p.beschreibung || '') + '</div></div><div class="card-action">' + (link ? '<a class="btn" href="' + escHtml(link) + '" target="_blank" rel="noopener">Ansehen <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>' : '') + '</div></div></div>';
+      }).join('');
+    } catch(err) {
+      list.innerHTML = '<div class="empty">Fehler beim Laden der Produkte.</div>';
+      countText.textContent = '';
+    }
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  loadProducts();
+</script>
+</body>
+</html>
